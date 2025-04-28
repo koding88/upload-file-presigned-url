@@ -9,9 +9,8 @@ import { fileUsageRepository } from "../repositories/file-usage.repository";
 import { v4 as uuidv4 } from "uuid";
 
 class FileService {
-    private readonly URL_EXPIRE_TIME = 900; // 15 minutes
-    // private readonly FILE_EXPIRE_TIME = 24 * 60 * 60 * 1000; // 1 day
-    private readonly FILE_EXPIRE_TIME = 15 * 60; // 15 seconds
+    private readonly URL_EXPIRE_TIME = 3 * 60 * 60; // 3 hours
+    private readonly FILE_EXPIRE_TIME = 24 * 60 * 60 * 1000; // 1 day
     private readonly BUCKET_NAME =
         process.env.AWS_BUCKET_NAME || "default-bucket";
     private readonly ENDPOINT = process.env.AWS_ENDPOINT;
@@ -25,7 +24,7 @@ class FileService {
             const params = {
                 Bucket: this.BUCKET_NAME,
                 Key: fileKey,
-                Expires: this.URL_EXPIRE_TIME, // URL hết hạn sau 15 phút
+                Expires: this.URL_EXPIRE_TIME, // URL hết hạn sau 3 hours
                 ContentType: fileType,
                 Tagging: "status=pending", // Thêm tag cho lifecycle rule
             };
@@ -38,8 +37,7 @@ class FileService {
 
             // Tạo expireAt date
             const expireAt = new Date();
-            // expireAt.setMinutes(expireAt.getMinutes() + 15); // Hết hạn sau 15 phút
-            expireAt.setSeconds(expireAt.getSeconds() + 15); // Hết hạn sau 15 seconds
+            expireAt.setDate(expireAt.getDate() + 1); // Hết hạn sau 1 ngày
 
             // Tạo bản ghi file mới trong database
             const newFile = await fileRepository.createFile({

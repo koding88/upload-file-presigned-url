@@ -75,7 +75,14 @@ class FileController {
                 );
             }
 
-            // Check if fileIds is an array of valid ObjectId
+            if (documentId) {
+                if (!validateId(documentId)) {
+                    throw errorHandler(
+                        "Invalid document ID",
+                        HttpStatus.BAD_REQUEST
+                    );
+                }
+            }
             if (!fileIds.every((id) => validateId(id))) {
                 throw errorHandler("Invalid file IDs", HttpStatus.BAD_REQUEST);
             }

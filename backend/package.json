@@ -2,7 +2,8 @@
     "scripts": {
         "dev": "ts-node-dev --clear ./src/server.ts",
         "build": "tsc",
-        "start": "node dist/src/server.js"
+        "start": "node dist/src/server.js",
+        "clean": "ts-node-dev --clear src/auto/clean-file.auto.ts"
     },
     "devDependencies": {
         "@types/cors": "^2.8.17",

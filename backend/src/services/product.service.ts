@@ -35,12 +35,9 @@ class ProductService {
 
     async createProduct(productData: IProductCreate) {
         try {
-            const { name, images, videos } = productData;
-
             const product = await productRepository.createProduct(productData);
 
             if (!product) {
-                await cleanupFiles([...images, ...videos]);
                 throw errorHandler(
                     "Failed to create product",
                     HttpStatus.BAD_REQUEST
@@ -71,7 +68,6 @@ class ProductService {
             const product = await productRepository.getProductById(productId);
 
             if (!product) {
-                await cleanupFiles([...newImages, ...newVideos]);
                 throw errorHandler("Product not found", HttpStatus.NOT_FOUND);
             }
 
@@ -103,7 +99,6 @@ class ProductService {
             );
 
             if (!updatedProduct) {
-                await cleanupFiles([...newImages, ...newVideos]);
                 throw errorHandler(
                     "Failed to update product",
                     HttpStatus.BAD_REQUEST

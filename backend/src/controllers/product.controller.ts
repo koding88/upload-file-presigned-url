@@ -57,7 +57,6 @@ class ProductController {
             logger.error(
                 `[ProductController]-[createProduct] Error Validation: ${error.message}`
             );
-            await cleanupFiles([...imageIds, ...videoIds]);
             throw errorHandler(error.message, HttpStatus.BAD_REQUEST);
         }
 
