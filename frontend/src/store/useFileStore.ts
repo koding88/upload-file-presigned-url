@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import api from "@/api/axios";
 import axios from "axios";
-import { FileData, FileMetadata, FileMeta, UploadUrlResponse } from "@/types";
+import { FileData, FileMetadata, UploadUrlResponse } from "@/types";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -19,7 +19,6 @@ interface FileStore {
     }) => Promise<UploadUrlResponse>;
     uploadFileToS3: (uploadUrl: string, file: File) => Promise<void>;
     updateFileMetadata: (metadata: FileMetadata) => Promise<FileData>;
-    saveFileMeta: (meta: FileMeta) => Promise<void>;
     setFiles: (files: FileData[]) => void;
     setVideos: (videos: FileData[]) => void;
     clearError: () => void;
@@ -81,21 +80,6 @@ const useFileStore = create<FileStore>((set) => ({
             const errorMessage = axios.isAxiosError(error)
                 ? error.response?.data?.error || (error as Error).message
                 : "Failed to update file metadata";
-            set({ error: errorMessage });
-            throw error;
-        } finally {
-            set({ isLoading: false });
-        }
-    },
-
-    saveFileMeta: async (meta) => {
-        try {
-            set({ isLoading: true, error: null });
-            await api.post(`${API_URL}/files/save-meta`, meta);
-        } catch (error) {
-            const errorMessage = axios.isAxiosError(error)
-                ? error.response?.data?.error || (error as Error).message
-                : "Failed to save file metadata";
             set({ error: errorMessage });
             throw error;
         } finally {

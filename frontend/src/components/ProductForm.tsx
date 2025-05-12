@@ -32,7 +32,7 @@ export default function ProductForm({
     onCancel,
 }: ProductFormProps) {
     const { createProduct, updateProduct } = useProductStore();
-    const { saveFileMeta, uploadedFiles, uploadedVideos, setFiles, setVideos } =
+    const { uploadedFiles, uploadedVideos, setFiles, setVideos } =
         useFileStore();
 
     const [name, setName] = useState("");
@@ -149,16 +149,6 @@ export default function ProductForm({
 
                 const result = await createProduct(productData);
 
-                // Mark files as used and create file_usages records for all selected files
-                const allFileIds = [...imageIds, ...videoIds];
-                if (allFileIds.length > 0) {
-                    await saveFileMeta({
-                        fileIds: allFileIds,
-                        modelName: "Product",
-                        documentId: result._id,
-                    });
-                }
-
                 // Reset form state after successful creation
                 resetFormState();
                 onSave(result);
@@ -199,16 +189,6 @@ export default function ProductForm({
                 };
 
                 const result = await updateProduct(product._id, productData);
-
-                // Đánh dấu files mới được thêm vào
-                const newFileIds = [...newImages, ...newVideos];
-                if (newFileIds.length > 0) {
-                    await saveFileMeta({
-                        fileIds: newFileIds,
-                        modelName: "Product",
-                        documentId: result._id,
-                    });
-                }
 
                 // Reset form state after successful update
                 resetFormState();

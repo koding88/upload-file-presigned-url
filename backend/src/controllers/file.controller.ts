@@ -2,7 +2,6 @@ import { Request, Response, NextFunction } from "express";
 import { HttpStatus } from "../constant/http-status.constant";
 import { errorHandler } from "../utils/error.util";
 import { fileService } from "../services/file.service";
-import { validateId } from "../validations/id.validation";
 
 class FileController {
     async generateUploadUrl(req: Request, res: Response, next: NextFunction) {
@@ -54,55 +53,6 @@ class FileController {
                 status: "success",
                 payload: updatedFile,
                 message: "File metadata updated successfully",
-            });
-        } catch (error) {
-            next(error);
-        }
-    }
-
-    async saveFileMeta(
-        req: Request,
-        res: Response,
-        next: NextFunction
-    ): Promise<void> {
-        try {
-            const { fileIds, modelName, documentId } = req.body;
-
-            if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
-                throw errorHandler(
-                    "File IDs are required",
-                    HttpStatus.BAD_REQUEST
-                );
-            }
-
-            if (documentId) {
-                if (!validateId(documentId)) {
-                    throw errorHandler(
-                        "Invalid document ID",
-                        HttpStatus.BAD_REQUEST
-                    );
-                }
-            }
-            if (!fileIds.every((id) => validateId(id))) {
-                throw errorHandler("Invalid file IDs", HttpStatus.BAD_REQUEST);
-            }
-
-            if (!modelName || !documentId) {
-                throw errorHandler(
-                    "Model name and document ID are required",
-                    HttpStatus.BAD_REQUEST
-                );
-            }
-
-            const result = await fileService.saveFileMeta(
-                fileIds,
-                modelName,
-                documentId
-            );
-            res.status(HttpStatus.CREATED).json({
-                status: "success",
-                payload: result,
-                message: "File metadata saved successfully",
             });
         } catch (error) {
             next(error);

@@ -50,13 +50,6 @@ export interface FileMetadata {
     fileSize: number;
 }
 
-// File usage
-export interface FileMeta {
-    fileIds: string[];
-    modelName: string;
-    documentId: string;
-}
-
 // Upload status
 export interface UploadStatus {
     success: boolean;
