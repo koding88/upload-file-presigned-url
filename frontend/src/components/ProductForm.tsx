@@ -16,7 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import SimpleFileUploader from "@/components/SimpleFileUploader";
 import VideoUploader from "@/components/VideoUploader";
-import { FileData, Product } from "@/types";
+import { FileData, Product, FileWithSize } from "@/types";
 import useProductStore from "@/store/useProductStore";
 import useFileStore from "@/store/useFileStore";
 
@@ -138,13 +138,25 @@ export default function ProductForm({
 
             // Xử lý create product
             if (!isEditMode) {
-                const imageIds = selectedImages.map((img) => img._id);
-                const videoIds = selectedVideos.map((vid) => vid._id);
+                // Tạo object với fileSize
+                const imageObjectsWithSize: FileWithSize[] = selectedImages.map(
+                    (img) => ({
+                        _id: img._id,
+                        fileSize: img.fileSize,
+                    })
+                );
+
+                const videoObjectsWithSize: FileWithSize[] = selectedVideos.map(
+                    (vid) => ({
+                        _id: vid._id,
+                        fileSize: vid.fileSize,
+                    })
+                );
 
                 const productData = {
                     name,
-                    images: imageIds,
-                    videos: videoIds,
+                    images: imageObjectsWithSize,
+                    videos: videoObjectsWithSize,
                 };
 
                 const result = await createProduct(productData);
@@ -160,13 +172,38 @@ export default function ProductForm({
                 const currentVideoIds = selectedVideos.map((vid) => vid._id);
 
                 // Xác định ảnh mới được thêm vào (không có trong danh sách gốc)
-                const newImages = currentImageIds.filter(
+                const newImagesIds = currentImageIds.filter(
                     (id) => !originalImageIds.includes(id)
                 );
 
                 // Xác định video mới được thêm vào (không có trong danh sách gốc)
-                const newVideos = currentVideoIds.filter(
+                const newVideosIds = currentVideoIds.filter(
                     (id) => !originalVideoIds.includes(id)
+                );
+
+                // Tạo objects với fileSize cho ảnh và video mới
+                const newImagesWithSize: FileWithSize[] = newImagesIds.map(
+                    (id) => {
+                        const img = selectedImages.find(
+                            (img) => img._id === id
+                        );
+                        return {
+                            _id: id,
+                            fileSize: img?.fileSize,
+                        };
+                    }
+                );
+
+                const newVideosWithSize: FileWithSize[] = newVideosIds.map(
+                    (id) => {
+                        const vid = selectedVideos.find(
+                            (vid) => vid._id === id
+                        );
+                        return {
+                            _id: id,
+                            fileSize: vid?.fileSize,
+                        };
+                    }
                 );
 
                 // Xác định files (ảnh) bị xóa
@@ -182,8 +219,8 @@ export default function ProductForm({
                 // Chuẩn bị dữ liệu theo cấu trúc mới
                 const productData = {
                     name,
-                    newImages,
-                    newVideos,
+                    newImages: newImagesWithSize,
+                    newVideos: newVideosWithSize,
                     imagesToDelete,
                     videosToDelete,
                 };
@@ -321,7 +358,7 @@ export default function ProductForm({
                                                     <div className="flex justify-between items-center mt-1">
                                                         <span className="text-[10px] text-blue-600">
                                                             {(
-                                                                file.fileSize /
+                                                                file.fileSize ?? 0 /
                                                                 1024
                                                             ).toFixed(0)}{" "}
                                                             KB
@@ -416,7 +453,7 @@ export default function ProductForm({
                                                     <div className="flex justify-between items-center mt-1">
                                                         <span className="text-[10px] text-muted-foreground">
                                                             {(
-                                                                file.fileSize /
+                                                                file.fileSize ?? 0 /
                                                                 (1024 * 1024)
                                                             ).toFixed(1)}{" "}
                                                             MB

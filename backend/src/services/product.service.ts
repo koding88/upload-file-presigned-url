@@ -1,9 +1,9 @@
 import { Types } from "mongoose";
 import { productRepository } from "../repositories/product.repository";
 import {
-    IProductCreate,
-    IProductUpdate,
+    IProductCreateRequest,
     IProductUpdateRequest,
+    IFileWithSize,
 } from "../types/product.type";
 import { logger } from "../utils/logger.util";
 import { errorHandler } from "../utils/error.util";
@@ -13,6 +13,40 @@ import { fileService } from "../services/file.service";
 import { fileRepository } from "../repositories/file.repository";
 
 class ProductService {
+    private async validateFileExistence(
+        fileIds: Types.ObjectId[]
+    ): Promise<void> {
+        if (fileIds.length === 0) return;
+
+        const existingFiles = await fileRepository.getFileByIds(fileIds);
+        if (existingFiles.length !== fileIds.length) {
+            throw errorHandler(
+                "Some file IDs do not exist",
+                HttpStatus.BAD_REQUEST
+            );
+        }
+    }
+
+    private async updateFileSizes(
+        files: IFileWithSize[]
+    ): Promise<void> {
+        const updates = files
+            .filter((file) => file.fileSize)
+            .map((file) =>
+                fileRepository.updateFileSizeById(file._id, file.fileSize!)
+            );
+        await Promise.all(updates);
+    }
+
+    private async saveFileMetadata(
+        fileIds: Types.ObjectId[],
+        modelName: string,
+        refId: Types.ObjectId
+    ): Promise<void> {
+        if (fileIds.length === 0) return;
+        await fileService.saveFileMeta(fileIds, modelName, refId);
+    }
+
     async getProducts() {
         try {
             return await productRepository.getProducts();
@@ -35,33 +69,25 @@ class ProductService {
         }
     }
 
-    async createProduct(productData: IProductCreate) {
+    async createProduct(productData: IProductCreateRequest) {
         try {
-            // Validate file IDs - check if they exist in the database
-            const { images = [], videos = [] } = productData;
-            const allFileIds = [...images, ...videos];
+            const imageIds = productData.images.map((img) => img._id);
+            const videoIds = productData.videos.map((vid) => vid._id);
+            const allFileIds = [...imageIds, ...videoIds];
 
-            if (allFileIds.length > 0) {
-                // Convert string IDs to ObjectIDs
-                const fileObjectIds = allFileIds.map(
-                    (id) => new Types.ObjectId(id.toString())
-                );
+            await this.validateFileExistence(allFileIds);
+            await this.updateFileSizes([
+                ...productData.images,
+                ...productData.videos,
+            ]);
 
-                // Check if files exist
-                const existingFiles = await fileRepository.getFileByIds(
-                    fileObjectIds
-                );
+            const newProduct = {
+                name: productData.name,
+                images: imageIds.map((id) => new Types.ObjectId(id)),
+                videos: videoIds.map((id) => new Types.ObjectId(id)),
+            };
 
-                if (existingFiles.length !== fileObjectIds.length) {
-                    throw errorHandler(
-                        "Some file IDs do not exist in the database",
-                        HttpStatus.BAD_REQUEST
-                    );
-                }
-            }
-
-            const product = await productRepository.createProduct(productData);
-
+            const product = await productRepository.createProduct(newProduct);
             if (!product) {
                 throw errorHandler(
                     "Failed to create product",
@@ -69,21 +95,7 @@ class ProductService {
                 );
             }
 
-            // Automatically save file metadata after product creation
-            if (allFileIds.length > 0) {
-                // Convert string IDs to ObjectIDs
-                const fileObjectIds = allFileIds.map(
-                    (id) => new Types.ObjectId(id.toString())
-                );
-
-                // Save file metadata
-                await fileService.saveFileMeta(
-                    fileObjectIds,
-                    "Product",
-                    product._id.toString()
-                );
-            }
-
+            await this.saveFileMetadata(allFileIds, "Product", product._id);
             return product;
         } catch (error: any) {
             logger.error(
@@ -105,50 +117,29 @@ class ProductService {
                 imagesToDelete = [],
                 videosToDelete = [],
             } = productData;
-            const product = await productRepository.getProductById(productId);
 
+            const product = await productRepository.getProductById(productId);
             if (!product) {
                 throw errorHandler("Product not found", HttpStatus.NOT_FOUND);
             }
 
-            // Validate new file IDs - check if they exist in the database
-            const allNewFileIds = [...newImages, ...newVideos];
+            const newImageIds = newImages.map((img) => img._id);
+            const newVideoIds = newVideos.map((vid) => vid._id);
+            const allNewFileIds = [...newImageIds, ...newVideoIds];
 
-            if (allNewFileIds.length > 0) {
-                // Convert string IDs to ObjectIDs
-                const fileObjectIds = allNewFileIds.map(
-                    (id) => new Types.ObjectId(id.toString())
-                );
+            await this.validateFileExistence(allNewFileIds);
+            await this.updateFileSizes([...newImages, ...newVideos]);
 
-                // Check if files exist
-                const existingFiles = await fileRepository.getFileByIds(
-                    fileObjectIds
-                );
-
-                if (existingFiles.length !== fileObjectIds.length) {
-                    throw errorHandler(
-                        "Some file IDs do not exist in the database",
-                        HttpStatus.BAD_REQUEST
-                    );
-                }
-            }
-
-            // Get current images and videos
-            const currentImages = product.images;
-            const currentVideos = product.videos;
-
-            // Update images
             const updatedImages = updateFileList(
-                currentImages,
-                newImages,
-                imagesToDelete
+                product.images,
+                newImageIds.map((id) => new Types.ObjectId(id)),
+                imagesToDelete.map((id) => new Types.ObjectId(id))
             );
 
-            // Update videos
             const updatedVideos = updateFileList(
-                currentVideos,
-                newVideos,
-                videosToDelete
+                product.videos,
+                newVideoIds.map((id) => new Types.ObjectId(id)),
+                videosToDelete.map((id) => new Types.ObjectId(id))
             );
 
             const updatedProduct = await productRepository.updateProduct(
@@ -167,22 +158,7 @@ class ProductService {
                 );
             }
 
-            // Automatically save metadata for new files
-            if (allNewFileIds.length > 0) {
-                // Convert string IDs to ObjectIDs
-                const fileObjectIds = allNewFileIds.map(
-                    (id) => new Types.ObjectId(id.toString())
-                );
-
-                // Save file metadata for new files
-                await fileService.saveFileMeta(
-                    fileObjectIds,
-                    "Product",
-                    productId.toString()
-                );
-            }
-
-            // Delete files that are no longer needed
+            await this.saveFileMetadata(allNewFileIds, "Product", productId);
             await cleanupFiles([...imagesToDelete, ...videosToDelete]);
 
             return updatedProduct;
@@ -197,13 +173,11 @@ class ProductService {
     async deleteProduct(productId: Types.ObjectId) {
         try {
             const product = await productRepository.deleteProduct(productId);
-
             if (!product) {
                 throw errorHandler("Product not found", HttpStatus.NOT_FOUND);
             }
 
             await cleanupFiles([...product.images, ...product.videos]);
-
             return product;
         } catch (error: any) {
             logger.error(

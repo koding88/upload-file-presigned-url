@@ -1,7 +1,10 @@
 import { Types } from "mongoose";
 import { productModel } from "../models/product.model";
 import { fileModel } from "../models/file.model";
-import { IProductCreate, IProductUpdate } from "../types/product.type";
+import {
+    IProductRepositoryCreate,
+    IProductUpdate,
+} from "../types/product.type";
 import { logger } from "../utils/logger.util";
 
 class ProductRepository {
@@ -37,7 +40,7 @@ class ProductRepository {
         }
     }
 
-    async createProduct(productData: IProductCreate) {
+    async createProduct(productData: IProductRepositoryCreate) {
         try {
             const product = await productModel.create(productData);
             return product;
@@ -49,7 +52,10 @@ class ProductRepository {
         }
     }
 
-    async updateProduct(productId: Types.ObjectId, productData: IProductUpdate) {
+    async updateProduct(
+        productId: Types.ObjectId,
+        productData: IProductUpdate
+    ) {
         try {
             const product = await productModel.findByIdAndUpdate(
                 productId,

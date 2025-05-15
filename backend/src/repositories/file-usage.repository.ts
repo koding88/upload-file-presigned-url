@@ -5,7 +5,7 @@ import { logger } from "../utils/logger.util";
 interface IFileUsage {
     fileId: Types.ObjectId;
     modelName: string;
-    documentId: string;
+    documentId: Types.ObjectId;
 }
 
 class FileUsageRepository {

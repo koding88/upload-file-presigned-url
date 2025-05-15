@@ -28,36 +28,6 @@ class FileController {
             next(error);
         }
     }
-
-    async updateFileMetadata(
-        req: Request,
-        res: Response,
-        next: NextFunction
-    ): Promise<void> {
-        try {
-            const { fileKey, fileSize } = req.body;
-
-            if (!fileKey) {
-                throw errorHandler(
-                    "File key is required",
-                    HttpStatus.BAD_REQUEST
-                );
-            }
-
-            const updatedFile = await fileService.updateFileMetadata(
-                fileKey,
-                fileSize
-            );
-
-            res.status(HttpStatus.OK).json({
-                status: "success",
-                payload: updatedFile,
-                message: "File metadata updated successfully",
-            });
-        } catch (error) {
-            next(error);
-        }
-    }
 }
 
 export const fileController = new FileController();

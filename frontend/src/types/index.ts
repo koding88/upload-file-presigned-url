@@ -3,11 +3,17 @@ export interface FileData {
     _id: string;
     fileKey: string;
     fileName: string;
-    fileType: string;
-    fileSize: number;
     fileUrl: string;
+    fileType: string;
+    fileSize?: number;
     createdAt: string;
     updatedAt: string;
+}
+
+// File with size
+export interface FileWithSize {
+    _id: string;
+    fileSize?: number;
 }
 
 // Product type definitions
@@ -16,22 +22,22 @@ export interface Product {
     name: string;
     images: FileData[];
     videos: FileData[];
-    createdAt: string;
-    updatedAt: string;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
-// Create Product request
-export interface CreateProductRequest {
+// Create Product request - Updated to match backend IProductCreateRequest
+export interface ProductForm {
     name: string;
-    images: string[];
-    videos: string[];
+    images: FileWithSize[]; // Now only accepting FileWithSize[] to ensure fileSize is included
+    videos: FileWithSize[]; // Now only accepting FileWithSize[] to ensure fileSize is included
 }
 
-// Update Product request
-export interface UpdateProductRequest {
+// Update Product request - Updated to match backend IProductUpdateRequest
+export interface ProductUpdateForm {
     name: string;
-    newImages: string[];
-    newVideos: string[];
+    newImages: FileWithSize[];
+    newVideos: FileWithSize[];
     imagesToDelete: string[];
     videosToDelete: string[];
 }

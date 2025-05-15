@@ -65,30 +65,10 @@ class FileService {
         }
     }
 
-    async updateFileMetadata(fileKey: string, fileSize: number) {
-        try {
-            const updatedFile = await fileRepository.updateFileByFileKey(
-                fileKey,
-                fileSize
-            );
-
-            if (!updatedFile) {
-                throw errorHandler("File not found", HttpStatus.NOT_FOUND);
-            }
-
-            return updatedFile;
-        } catch (error: any) {
-            logger.error(
-                `[FileService]-[updateFileMetadata] Error: ${error.message}`
-            );
-            throw error;
-        }
-    }
-
     async saveFileMeta(
         fileIds: Types.ObjectId[],
         modelName: string,
-        documentId: string
+        documentId: Types.ObjectId
     ) {
         try {
             // Cập nhật trạng thái file thành "used" và xóa expireAt

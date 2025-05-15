@@ -31,8 +31,7 @@ interface VideoUploaderProps {
 export default function VideoUploader({
     onUploadComplete,
 }: VideoUploaderProps) {
-    const { generateUploadUrl, uploadFileToS3, updateFileMetadata } =
-        useFileStore();
+    const { generateUploadUrl, uploadFileToS3 } = useFileStore();
 
     const [files, setFiles] = useState<File[]>([]);
     const [isUploading, setIsUploading] = useState(false);
@@ -85,17 +84,14 @@ export default function VideoUploader({
                 // Step 2: Upload the file directly to S3 (MinIO)
                 await uploadFileToS3(uploadUrl, file);
 
-                // Step 3: Update file metadata with the file size
-                const fileData = await updateFileMetadata({
-                    fileKey,
-                    fileSize: file.size,
-                });
-
-                // Ensure fileId is included in the result
+                // Create the complete file data object with fileSize included directly
                 const completeFileData: FileData = {
-                    ...fileData,
                     _id: fileId,
-                    fileUrl,
+                    fileKey: fileKey,
+                    fileName: file.name,
+                    fileUrl: fileUrl,
+                    fileType: file.type,
+                    fileSize: file.size,
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                 };

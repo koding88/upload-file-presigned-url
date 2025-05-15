@@ -1,70 +1,95 @@
 import { Request, Response, NextFunction } from "express";
+import { Types } from "mongoose";
 import { productService } from "../services/product.service";
 import { HttpStatus } from "../constant/http-status.constant";
-import { Types } from "mongoose";
 import { validateId } from "../validations/id.validation";
 import { errorHandler } from "../utils/error.util";
 import { productValidation } from "../validations/product.validation";
-import { cleanupFiles, extractFileIds } from "../utils/file.util";
 import { logger } from "../utils/logger.util";
-import { IProductUpdateRequest } from "../types/product.type";
+import {
+    IProductCreateRequest,
+    IProductUpdateRequest,
+    IFileWithSize,
+} from "../types/product.type";
 
 class ProductController {
-    async getProducts(req: Request, res: Response, next: NextFunction) {
+    private validateObjectId(id: string | Types.ObjectId, field = "ID") {
+        if (!validateId(id)) {
+            throw errorHandler(`Invalid ${field}`, HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    private transformMediaArray(media: IFileWithSize[], field: string) {
+        return media.map((item) => {
+            this.validateObjectId(item._id, `${field} ID`);
+            return {
+                _id: item._id,
+                fileSize: item.fileSize,
+            };
+        });
+    }
+
+    private transformIdArray(ids: Types.ObjectId[], field: string) {
+        return ids.map((id) => {
+            this.validateObjectId(id, `${field} ID to delete`);
+            return id;
+        });
+    }
+
+    getProducts = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const products = await productService.getProducts();
-
             res.status(HttpStatus.OK).json({
                 status: "success",
                 payload: products,
                 message: "Products fetched successfully",
             });
-        } catch (error: any) {
+        } catch (error) {
             next(error);
         }
     }
 
-    async getProductById(req: Request, res: Response, next: NextFunction) {
+    getProductById = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            if (!validateId(req.params.id)) {
-                throw errorHandler(
-                    "Invalid product ID",
-                    HttpStatus.BAD_REQUEST
-                );
-            }
+            this.validateObjectId(req.params.id, "Product ID");
 
             const product = await productService.getProductById(
                 new Types.ObjectId(req.params.id)
             );
+
             res.status(HttpStatus.OK).json({
                 status: "success",
                 payload: product,
                 message: "Product fetched successfully",
             });
-        } catch (error: any) {
+        } catch (error) {
             next(error);
         }
     }
 
-    async createProduct(req: Request, res: Response, next: NextFunction) {
-        const { name, images, videos } = req.body;
-        // Trích xuất IDs từ images và videos
-        const imageIds = extractFileIds(images || []);
-        const videoIds = extractFileIds(videos || []);
-
-        const { error } = productValidation.validate({ name });
-        if (error) {
-            logger.error(
-                `[ProductController]-[createProduct] Error Validation: ${error.message}`
-            );
-            throw errorHandler(error.message, HttpStatus.BAD_REQUEST);
-        }
-
+    createProduct = async (req: Request, res: Response, next: NextFunction) => {
         try {
+            const {
+                name,
+                images = [],
+                videos = [],
+            } = req.body as IProductCreateRequest;
+
+            const { error } = productValidation.validate({ name });
+            if (error) {
+                logger.error(
+                    `[ProductController] Validation failed: ${error.message}`
+                );
+                throw errorHandler(error.message, HttpStatus.BAD_REQUEST);
+            }
+
+            const imageData = this.transformMediaArray(images, "image");
+            const videoData = this.transformMediaArray(videos, "video");
+
             const product = await productService.createProduct({
                 name,
-                images: imageIds,
-                videos: videoIds,
+                images: imageData,
+                videos: videoData,
             });
 
             res.status(HttpStatus.CREATED).json({
@@ -72,79 +97,78 @@ class ProductController {
                 payload: product,
                 message: "Product created successfully",
             });
-        } catch (error: any) {
+        } catch (error) {
             next(error);
         }
     }
 
-    async updateProduct(req: Request, res: Response, next: NextFunction) {
+    updateProduct = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            if (!validateId(req.params.id)) {
-                throw errorHandler(
-                    "Invalid product ID",
-                    HttpStatus.BAD_REQUEST
-                );
-            }
+            const id = req.params.id;
+            this.validateObjectId(id, "Product ID");
 
             const {
                 name,
-                newImages,
-                newVideos,
-                imagesToDelete,
-                videosToDelete,
+                newImages = [],
+                newVideos = [],
+                imagesToDelete = [],
+                videosToDelete = [],
             } = req.body as IProductUpdateRequest;
-            // Trích xuất IDs của các file mới
-            const newImageIds = extractFileIds(newImages);
-            const newVideoIds = extractFileIds(newVideos);
 
             const { error } = productValidation.validate({ name });
             if (error) {
-                await cleanupFiles([...newImageIds, ...newVideoIds]);
                 logger.error(
-                    `[ProductController]-[updateProduct] Error Validation: ${error.message}`
+                    `[ProductController] Validation failed: ${error.message}`
                 );
                 throw errorHandler(error.message, HttpStatus.BAD_REQUEST);
             }
 
+            const newImageData = this.transformMediaArray(newImages, "image");
+            const newVideoData = this.transformMediaArray(newVideos, "video");
+
+            const imagesToDeleteObjIds = this.transformIdArray(
+                imagesToDelete,
+                "image"
+            );
+            const videosToDeleteObjIds = this.transformIdArray(
+                videosToDelete,
+                "video"
+            );
+
             const product = await productService.updateProduct(
-                new Types.ObjectId(req.params.id),
+                new Types.ObjectId(id),
                 {
                     name,
-                    newImages: newImageIds,
-                    newVideos: newVideoIds,
-                    imagesToDelete,
-                    videosToDelete,
+                    newImages: newImageData,
+                    newVideos: newVideoData,
+                    imagesToDelete: imagesToDeleteObjIds,
+                    videosToDelete: videosToDeleteObjIds,
                 }
             );
+
             res.status(HttpStatus.OK).json({
                 status: "success",
                 payload: product,
                 message: "Product updated successfully",
             });
-        } catch (error: any) {
+        } catch (error) {
             next(error);
         }
     }
 
-    async deleteProduct(req: Request, res: Response, next: NextFunction) {
+    deleteProduct = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            if (!validateId(req.params.id)) {
-                throw errorHandler(
-                    "Invalid product ID",
-                    HttpStatus.BAD_REQUEST
-                );
-            }
+            this.validateObjectId(req.params.id, "Product ID");
 
-            const product = await productService.deleteProduct(
+            await productService.deleteProduct(
                 new Types.ObjectId(req.params.id)
             );
 
             res.status(HttpStatus.NO_CONTENT).json({
                 status: "success",
-                payload: product,
                 message: "Product deleted successfully",
             });
-        } catch (error: any) {
+        } catch (error) {
             next(error);
         }
     }

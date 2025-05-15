@@ -28,22 +28,6 @@ class FileRepository {
         }
     }
 
-    async updateFileByFileKey(fileKey: string, fileSize: number) {
-        try {
-            const updatedFile = await fileModel.findOneAndUpdate(
-                { fileKey },
-                { fileSize },
-                { new: true }
-            );
-            return updatedFile;
-        } catch (error: any) {
-            logger.error(
-                `[FileRepository]-[updateFileByFileKey] Error: ${error.message}`
-            );
-            throw error;
-        }
-    }
-
     async updateManyFilesStatus(fileIds: Types.ObjectId[], status: FileStatus) {
         try {
             return await fileModel.updateMany(
@@ -105,6 +89,21 @@ class FileRepository {
         } catch (error: any) {
             logger.error(
                 `[FileRepository]-[findOrphanedFiles] Error: ${error.message}`
+            );
+            throw error;
+        }
+    }
+
+    async updateFileSizeById(fileId: Types.ObjectId, fileSize: number) {
+        try {
+            return await fileModel.findByIdAndUpdate(
+                fileId,
+                { fileSize },
+                { new: true }
+            );
+        } catch (error: any) {
+            logger.error(
+                `[FileRepository]-[updateFileSizeById] Error: ${error.message}`
             );
             throw error;
         }

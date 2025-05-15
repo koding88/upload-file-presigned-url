@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import api from "@/api/axios";
 import axios from "axios";
-import { Product, CreateProductRequest, UpdateProductRequest } from "@/types";
+import { Product, ProductForm, ProductUpdateForm } from "@/types";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -13,10 +13,13 @@ interface ProductStore {
     error: string | null;
 
     // Actions
-    fetchProducts: () => Promise<Product[]>;
+    fetchProducts: () => Promise<void>;
     getProductById: (id: string) => Promise<Product>;
-    createProduct: (data: CreateProductRequest) => Promise<Product>;
-    updateProduct: (id: string, data: UpdateProductRequest) => Promise<Product>;
+    createProduct: (productData: ProductForm) => Promise<Product>;
+    updateProduct: (
+        id: string,
+        productData: ProductUpdateForm
+    ) => Promise<Product>;
     deleteProduct: (id: string) => Promise<void>;
     setCurrentProduct: (product: Product | null) => void;
     clearError: () => void;
@@ -32,17 +35,15 @@ const useProductStore = create<ProductStore>((set) => ({
         try {
             set({ isLoading: true, error: null });
             const response = await api.get(`${API_URL}/products`);
-            const products = response.data.payload;
-            set({ products });
-            return products;
-        } catch (error) {
-            const errorMessage = axios.isAxiosError(error)
-                ? error.response?.data?.error || (error as Error).message
-                : "Failed to fetch products";
-            set({ error: errorMessage });
-            throw error;
-        } finally {
-            set({ isLoading: false });
+            set({
+                products: response.data.payload || [],
+                isLoading: false,
+            });
+        } catch (error: unknown) {
+            set({
+                error: error instanceof Error ? error.message : "Unknown error",
+                isLoading: false,
+            });
         }
     },
 
@@ -64,28 +65,21 @@ const useProductStore = create<ProductStore>((set) => ({
         }
     },
 
-    createProduct: async (data) => {
-        try {
-            set({ isLoading: true, error: null });
-            const response = await api.post(`${API_URL}/products`, data);
-            const newProduct = response.data.payload;
-            set((state) => ({ products: [...state.products, newProduct] }));
-            return newProduct;
-        } catch (error) {
-            const errorMessage = axios.isAxiosError(error)
-                ? error.response?.data?.error || (error as Error).message
-                : "Failed to create product";
-            set({ error: errorMessage });
-            throw error;
-        } finally {
-            set({ isLoading: false });
-        }
+    createProduct: async (productData) => {
+        const response = await api.post(`${API_URL}/products`, productData);
+        const newProduct = response.data.payload;
+        set((state) => ({
+            products: [...state.products, newProduct],
+        }));
+        return newProduct;
     },
 
-    updateProduct: async (id, data) => {
+    updateProduct: async (id, productData) => {
         try {
-            set({ isLoading: true, error: null });
-            const response = await api.put(`${API_URL}/products/${id}`, data);
+            const response = await api.put(
+                `${API_URL}/products/${id}`,
+                productData
+            );
             const updatedProduct = response.data.payload;
             set((state) => ({
                 products: state.products.map((product) =>
