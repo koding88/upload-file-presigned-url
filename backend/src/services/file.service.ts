@@ -33,7 +33,7 @@ class FileService {
             const uploadUrl = await s3.getSignedUrlPromise("putObject", params);
 
             // Tạo URL truy cập file sau khi upload
-            const fileUrl = `${process.env.AWS_ENDPOINT}/${process.env.AWS_BUCKET_NAME}/${fileKey}`;
+            const fileUrl = `${this.ENDPOINT}/${this.BUCKET_NAME}/${fileKey}`;
 
             // Tạo expireAt date
             const expireAt = new Date();
